@@ -1,8 +1,6 @@
 #!/bin/bash
 # A modern, production-ready script to install Odoo 18 in Docker Compose.
-# - Uses /srv/ for project files, a best-practice location.
-# - Generates secure, random passwords for production use.
-# - Uses the modern 'docker compose' plugin.
+# This version handles all installation scenarios robustly.
 
 # Exit immediately if a command exits with a non-zero status.
 set -e
@@ -11,7 +9,7 @@ set -e
 echo "🔐 Generating secure random passwords..."
 DB_PASSWORD=$(openssl rand -base64 12)
 ADMIN_PASSWORD=$(openssl rand -base64 12)
-PROJECT_DIR="/odoo-production"
+PROJECT_DIR="/srv/odoo-production"
 
 
 # --- 2. System Preparation & Docker Installation ---
@@ -19,18 +17,24 @@ echo "🚀 Starting Odoo 18 installation..."
 echo "Updating system packages..."
 sudo apt-get update && sudo apt-get upgrade -y
 
-# Install Docker Engine if not present
-if ! command -v docker &> /dev/null; then
-    echo "Installing Docker..."
+# Ensure Docker's official repository is configured
+if [ ! -f /etc/apt/sources.list.d/docker.list ]; then
+    echo "Docker repository not found. Adding Docker's official GPG key and repository..."
     sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    echo "Updating package list with new Docker repo..."
     sudo apt-get update
+fi
+
+# Install Docker Engine if not present
+if ! command -v docker &> /dev/null; then
+    echo "Installing Docker Engine..."
     sudo apt-get install -y docker-ce docker-ce-cli containerd.io
     sudo usermod -aG docker ${SUDO_USER:-$(whoami)}
-    echo "Docker installed. You may need to log out and back in for group changes to apply."
+    echo "Docker installed. You must log out and back in for Docker commands to work without sudo."
 else
-    echo "Docker is already installed."
+    echo "Docker Engine is already installed."
 fi
 
 # Install Docker Compose plugin if not present
